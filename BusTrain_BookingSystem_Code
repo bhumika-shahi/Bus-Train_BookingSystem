@@ -1,0 +1,281 @@
+/**
+ * A simple console-based bus/train booking system in C++.
+ *
+ * This version is simplified to avoid using <vector>, <iomanip>, and <limits>.
+ * It uses C-style arrays and manual memory management (new/delete).
+ *
+ * Features:
+ * 1. View all available vehicles (buses/trains).
+ * 2. View the seating map for a specific vehicle.
+ * 3. Book a seat for a passenger.
+ *
+ * Data is stored in-memory and will be reset when the program exits.
+ */
+
+#include <iostream>
+#include <string> // For std::string
+using namespace std;
+
+// --- Global Constants ---
+const int MAX_BUSES = 10;   // Maximum buses the system can hold
+const int MAX_SEATS = 50;   // Maximum seats any single bus can hold
+
+/**
+ * @class Seat
+ * @brief Represents a single seat in a vehicle.
+ */
+class Seat {
+private:
+    int seatNumber;
+    bool isBooked;
+    string passengerName;
+
+public:
+    Seat() : seatNumber(0), isBooked(false), passengerName("Empty") {}
+    Seat(int num) : seatNumber(num), isBooked(false), passengerName("Empty") {}
+
+    bool book(string name) {
+        if (isBooked) {
+            return false;
+        }
+        isBooked = true;
+        passengerName = name;
+        return true;
+    }
+
+    void cancelBooking() {
+        isBooked = false;
+        passengerName = "Empty";
+    }
+
+    int getSeatNumber() const {
+        return seatNumber;
+    }
+
+    bool getIsBooked() const {
+        return isBooked;
+    }
+
+    string getPassengerName() const {
+        return passengerName;
+    }
+};
+
+/**
+ * @class Bus
+ * @brief Represents a single vehicle (bus or train).
+ */
+class Bus {
+private:
+    string vehicleNumber;
+    string route;
+    Seat* seats;
+    int totalSeats;
+
+public:
+    Bus(string num, string rt, int numSeats) : vehicleNumber(num), route(rt) {
+        if (numSeats > MAX_SEATS) {
+            numSeats = MAX_SEATS;
+        }
+        totalSeats = numSeats;
+        seats = new Seat[totalSeats];
+
+        for (int i = 0; i < totalSeats; ++i) {
+            seats[i] = Seat(i + 1);
+        }
+    }
+
+    ~Bus() {
+        delete[] seats;
+    }
+
+    void displaySeats() {
+        cout << "\n--- Seating Map for " << vehicleNumber << " (" << route << ") ---" << endl;
+        cout << " [NN: Status] NN = Seat Number\n" << endl;
+
+        for (int i = 0; i < totalSeats; ++i) {
+            cout << "[";
+            if (seats[i].getSeatNumber() < 10) {
+                cout << "0";
+            }
+            cout << seats[i].getSeatNumber() << ": ";
+            cout << (seats[i].getIsBooked() ? "Booked" : "Empty") << "] ";
+
+            if ((i + 1) % 4 == 0) {
+                cout << endl;
+            }
+        }
+        cout << "\n" << string(50, '-') << endl;
+    }
+
+    void bookSeat(int seatNum, string passengerName) {
+        if (seatNum < 1 || seatNum > totalSeats) {
+            cout << "Error: Invalid seat number. Please choose between 1 and " << totalSeats << "." << endl;
+            return;
+        }
+
+        if (seats[seatNum - 1].book(passengerName)) {
+            cout << "Success: Seat " << seatNum << " booked for " << passengerName << " on " << vehicleNumber << "." << endl;
+        } else {
+            cout << "Error: Seat " << seatNum << " is already booked." << endl;
+        }
+    }
+
+    string getVehicleNumber() const {
+        return vehicleNumber;
+    }
+
+    string getRoute() const {
+        return route;
+    }
+
+    int getTotalSeats() const {
+        return totalSeats;
+    }
+};
+
+/**
+ * @class BookingSystem
+ * @brief Manages the entire booking application.
+ */
+class BookingSystem {
+private:
+    Bus* buses[MAX_BUSES];
+    int currentBusCount;
+
+    Bus* findBus(string busNum) {
+        for (int i = 0; i < currentBusCount; ++i) {
+            if (buses[i] && buses[i]->getVehicleNumber() == busNum) {
+                return buses[i];
+            }
+        }
+        return nullptr;
+    }
+
+    void clearInputBuffer() {
+        cin.ignore(10000, '\n');
+    }
+
+public:
+    BookingSystem() {
+        for (int i = 0; i < MAX_BUSES; ++i) {
+            buses[i] = nullptr;
+        }
+
+        buses[0] = new Bus("B-01", "New York to Boston", 20);
+        buses[1] = new Bus("B-02", "Chicago to Dallas", 30);
+        buses[2] = new Bus("T-10", "San Francisco to LA (Train)", 50);
+
+        currentBusCount = 3;
+    }
+
+    ~BookingSystem() {
+        for (int i = 0; i < currentBusCount; ++i) {
+            delete buses[i];
+        }
+    }
+
+    void showMenu() {
+        cout << "\n===== Bus & Train Booking System =====" << endl;
+        cout << "1. View Available Routes" << endl;
+        cout << "2. View Seating Map" << endl;
+        cout << "3. Book a Ticket" << endl;
+        cout << "4. Exit" << endl;
+        cout << "======================================" << endl;
+        cout << "Enter your choice (1-4): ";
+    }
+
+    void viewAvailableBuses() {
+        cout << "\n--- Available Routes ---" << endl;
+        cout << "Vehicle No.\tRoute" << endl;
+        cout << "------------------------------------" << endl;
+
+        for (int i = 0; i < currentBusCount; ++i) {
+            if (buses[i]) {
+                cout << buses[i]->getVehicleNumber() << "\t\t" << buses[i]->getRoute() << endl;
+            }
+        }
+        cout << "------------------------------------" << endl;
+    }
+
+    void handleBooking() {
+        string busNum, passengerName;
+        int seatNum;
+
+        viewAvailableBuses();
+        cout << "Enter the Vehicle No. you want to book (e.g., 'B-01'): ";
+        cin >> busNum;
+
+        Bus* bus = findBus(busNum);
+        if (!bus) {
+            cout << "Error: Vehicle not found." << endl;
+            return;
+        }
+
+        bus->displaySeats();
+
+        cout << "Enter the Seat Number you want to book: ";
+        while (!(cin >> seatNum)) {
+            cout << "Invalid input. Please enter a number: ";
+            cin.clear();
+            clearInputBuffer();
+        }
+
+        cout << "Enter Passenger Name: ";
+        clearInputBuffer();
+        getline(cin, passengerName);
+
+        bus->bookSeat(seatNum, passengerName);
+    }
+
+    void handleViewSeats() {
+        string busNum;
+        cout << "Enter the Vehicle No. to view seats (e.g., 'B-01'): ";
+        cin >> busNum;
+
+        Bus* bus = findBus(busNum);
+        if (!bus) {
+            cout << "Error: Vehicle not found." << endl;
+        } else {
+            bus->displaySeats();
+        }
+    }
+
+    void run() {
+        int choice;
+        while (true) {
+            showMenu();
+            while (!(cin >> choice)) {
+                cout << "Invalid input. Please enter a number (1-4): ";
+                cin.clear();
+                clearInputBuffer();
+            }
+
+            switch (choice) {
+                case 1:
+                    viewAvailableBuses();
+                    break;
+                case 2:
+                    handleViewSeats();
+                    break;
+                case 3:
+                    handleBooking();
+                    break;
+                case 4:
+                    cout << "Thank you for using the booking system. Goodbye!" << endl;
+                    return;
+                default:
+                    cout << "Invalid choice. Please select from 1 to 4." << endl;
+            }
+        }
+    }
+};
+
+/**
+ * @brief Main function
+ */
+int main() {
+    BookingSystem system;
+    system.run();
+    return 0;
+}
